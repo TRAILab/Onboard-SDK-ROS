@@ -173,6 +173,8 @@ namespace dji_osdk_ros
       bool initGimbalModule();
       bool initCameraModule();
       void initService();
+      bool initFlightControl();
+      bool initGimbalCtrl();
       bool initTopic();
       bool initDataSubscribeFromFC();
       bool cleanUpSubscribeFromFC();
@@ -306,6 +308,11 @@ namespace dji_osdk_ros
       bool getDroneTypeCallback(dji_osdk_ros::GetDroneType::Request &request,
                                 dji_osdk_ros::GetDroneType::Response &response);
       /*! for flight control */
+      void flightControlSetpointCallback(const sensor_msgs::Joy::ConstPtr& pMsg);
+      void flightControlPxPyPzYawCallback(const sensor_msgs::Joy::ConstPtr& pMsg);
+      void flightControlVxVyVzYawrateCallback(const sensor_msgs::Joy::ConstPtr& pMsg);
+      void flightControlRollPitchPzYawrateCallback(const sensor_msgs::Joy::ConstPtr& pMsg);
+
       bool taskCtrlCallback(FlightTaskControl::Request& request, FlightTaskControl::Response& response);
       bool setGoHomeAltitudeCallback(SetGoHomeAltitude::Request& request, SetGoHomeAltitude::Response& response);
       bool setHomeCallback(SetNewHomePoint::Request& request, SetNewHomePoint::Response& response);
@@ -315,6 +322,8 @@ namespace dji_osdk_ros
       bool setUpwardsAvoidCallback(AvoidEnable::Request& request, AvoidEnable::Response& response);
       /*! for gimbal control */
       bool gimbalCtrlCallback(GimbalAction::Request& request, GimbalAction::Response& response);
+      void gimbalAngleCtrlCallback(const dji_osdk_ros::Gimbal::ConstPtr& msg);
+      void gimbalSpeedCtrlCallback(const geometry_msgs::Vector3Stamped::ConstPtr& msg);
       /*! for camera conrol */
       bool cameraSetEVCallback(CameraEV::Request& request, CameraEV::Response& response);
       bool cameraSetShutterSpeedCallback(CameraShutterSpeed::Request& request, CameraShutterSpeed::Response& response);
@@ -442,6 +451,15 @@ namespace dji_osdk_ros
       bool stereo_vga_subscription_success;
 
       std::vector<DJIWaypointV2Action> actions;
+
+      // flight control subscribers
+      ros::Subscriber flight_control_sub;
+
+      ros::Subscriber flight_control_position_yaw_sub;
+      ros::Subscriber flight_control_velocity_yawrate_sub;
+      ros::Subscriber flight_control_rollpitch_yawrate_vertpos_sub;
+      ros::Subscriber gimbal_angle_cmd_subscriber;
+      ros::Subscriber gimbal_speed_cmd_subscriber;
 
     //! data broadcast callback
     void dataBroadcastCallback();

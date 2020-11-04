@@ -99,7 +99,9 @@ static T_OsdkOsalHandler osalHandler = {
       enc_key_(enc_key),
       device_acm_(device_acm_name),
       device_(dev_name),
-      baudrate_(baud_rate)
+      baudrate_(baud_rate),
+      R_FLU2FRD(tf::Matrix3x3(1,  0,  0, 0, -1,  0, 0,  0, -1)),
+      R_ENU2NED(tf::Matrix3x3(0,  1,  0, 1,  0,  0, 0,  0, -1))
   {
     std::cout << "EnableAd: " << enableAdvancedSensing << std::endl;
     timeout_ = 1;
@@ -1153,6 +1155,94 @@ static T_OsdkOsalHandler osalHandler = {
     }
 
     return true;
+  }
+
+  void VehicleWrapper::flightControl(uint8_t flag, float xSP, float ySP, float zSP, float yawSP)
+  {
+    uint8_t HORI  = (flag & 0xC0);
+    uint8_t VERT  = (flag & 0x30);
+    uint8_t YAW   = (flag & 0x08);
+    uint8_t FRAME = (flag & 0x06);
+    uint8_t HOLD  = (flag & 0x01);
+
+    double xCmd, yCmd, zCmd, yawCmd;
+    if (FRAME == Control::HORIZONTAL_GROUND)
+    {
+      // 1.1 Horizontal channels
+      if ( (HORI == Control::HORIZONTAL_VELOCITY) || (HORI == Control::HORIZONTAL_POSITION) )
+      {
+        xCmd = ySP;
+        yCmd = xSP;
+      }
+      else
+      {
+        //ROS_DEBUG("GROUND frame is specified, but angle and rate command is generated in body frame");
+        xCmd = RAD2DEG * xSP;
+        yCmd = RAD2DEG * (-ySP);
+      }
+
+      // 1.2 Verticle Channel
+      if ( (VERT == Control::VERTICAL_VELOCITY) || (VERT == Control::VERTICAL_POSITION) )
+      {
+        zCmd = zSP;
+      }
+      else
+      {
+        //ROS_WARN_THROTTLE(1.0, "GROUND frame is specified, but thrust command is generated in body frame");
+        zCmd = zSP;
+      }
+    }
+    else if(FRAME == Control::HORIZONTAL_BODY)
+    {
+      // 2.1 Horizontal channels
+      if ( (HORI == Control::HORIZONTAL_VELOCITY) || (HORI == Control::HORIZONTAL_POSITION) )
+      {
+        // The X and Y Vel and Pos should be only based on rotation after Yaw,
+        // whithout roll and pitch. Otherwise the behavior will be weird.
+
+        // Transform from F-R to F-L
+        xCmd = xSP;
+        yCmd = -ySP;
+      }
+      else
+      {
+        xCmd = RAD2DEG * xSP;
+        yCmd = RAD2DEG * (-ySP);
+      }
+
+      // 2.2 Vertical channel
+      if ( (VERT == Control::VERTICAL_VELOCITY) || (VERT == Control::VERTICAL_POSITION)  )
+      {
+        //ROS_WARN_THROTTLE(1.0, "BODY frame is specified, but hight and z-velocity is generated in ground frame");
+        zCmd = zSP;
+      }
+      else
+      {
+        zCmd = zSP;
+      }
+    }
+
+    // The behavior of yaw should be the same in either frame
+    if ( YAW == Control::YAW_ANGLE )
+    {
+      tf::Matrix3x3 rotationSrc;
+      rotationSrc.setRPY(0.0, 0.0, yawSP);
+
+      //The last term should be transpose, but since it's symmetric ...
+      tf::Matrix3x3 rotationDes (R_ENU2NED * rotationSrc * R_FLU2FRD);
+
+      double temp1, temp2;
+      rotationDes.getRPY(temp1, temp2, yawCmd);
+
+      yawCmd = RAD2DEG * (yawCmd);
+    }
+    else if (YAW == Control::YAW_RATE)
+    {
+      yawCmd = RAD2DEG * (-yawSP);
+    }
+
+    Control::CtrlData ctrlData(flag, xCmd, yCmd, zCmd, yawCmd);
+    vehicle->control->flightCtrl(ctrlData);
   }
 
   bool VehicleWrapper::goHome(ACK::ErrorCode& ack, int timeout)

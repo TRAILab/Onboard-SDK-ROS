@@ -83,6 +83,8 @@ VehicleNode::VehicleNode():telemetry_from_fc_(TelemetryType::USE_ROS_BROADCAST),
   initCameraModule();
   initService();
   initTopic();
+  initFlightControl();
+  initGimbalCtrl();
 }
 
 VehicleNode::~VehicleNode()
@@ -298,6 +300,39 @@ void VehicleNode::initService()
   waypointv2_subscribe_mission_state_server_ = nh_.advertiseService("dji_osdk_ros/waypointV2_subscribeMissionState", &VehicleNode::waypointV2SubscribeMissionStateCallback, this);
 
   ROS_INFO_STREAM("Services startup!");
+}
+
+bool VehicleNode::initFlightControl()
+{
+  flight_control_sub = nh_.subscribe<sensor_msgs::Joy>(
+    "dji_osdk_ros/flight_control_setpoint_generic", 10, 
+    &VehicleNode::flightControlSetpointCallback,   this);
+
+  flight_control_position_yaw_sub =
+    nh_.subscribe<sensor_msgs::Joy>(
+      "dji_osdk_ros/flight_control_setpoint_ENUposition_yaw", 10,
+      &VehicleNode::flightControlPxPyPzYawCallback, this);
+
+  flight_control_velocity_yawrate_sub =
+    nh_.subscribe<sensor_msgs::Joy>(
+      "dji_osdk_ros/flight_control_setpoint_ENUvelocity_yawrate", 10,
+      &VehicleNode::flightControlVxVyVzYawrateCallback, this);
+
+  flight_control_rollpitch_yawrate_vertpos_sub =
+    nh_.subscribe<sensor_msgs::Joy>(
+      "dji_osdk_ros/flight_control_setpoint_rollpitch_yawrate_zposition", 10,
+      &VehicleNode::flightControlRollPitchPzYawrateCallback, this);
+
+  return true;
+}
+
+bool VehicleNode::initGimbalCtrl()
+{
+  gimbal_angle_cmd_subscriber = nh_.subscribe<dji_osdk_ros::Gimbal>(
+    "dji_osdk_ros/gimbal_angle_cmd", 10, &VehicleNode::gimbalAngleCtrlCallback, this);
+  gimbal_speed_cmd_subscriber = nh_.subscribe<geometry_msgs::Vector3Stamped>(
+    "dji_osdk_ros/gimbal_speed_cmd", 10, &VehicleNode::gimbalSpeedCtrlCallback, this);
+  return true;
 }
 
 bool VehicleNode::initTopic()
@@ -1452,4 +1487,101 @@ int main(int argc, char** argv)
 
   ros::spin();
   return 0;
+}
+
+void
+VehicleNode::gimbalAngleCtrlCallback(const dji_osdk_ros::Gimbal::ConstPtr& msg)
+{
+  ROS_DEBUG("called gimbalAngleCtrlCallback");
+
+  DJI::OSDK::Gimbal::AngleData angle_data;
+  //! OSDK takes 0.1 sec as unit
+  angle_data.duration = msg->ts*10;
+  angle_data.mode     = msg->mode;
+  //! OSDK takes 0.1 deg as unit
+  angle_data.roll     = RAD2DEG(msg->roll)*10;
+  angle_data.pitch    = RAD2DEG(msg->pitch)*10;
+  angle_data.yaw      = RAD2DEG(msg->yaw)*10;
+  ptr_wrapper_->getVehicle()->gimbal->setAngle(&angle_data);
+}
+
+void
+VehicleNode::gimbalSpeedCtrlCallback(
+  const geometry_msgs::Vector3Stamped::ConstPtr& msg)
+{
+  ROS_DEBUG("called gimbalAngleCtrlCallback");
+
+  DJI::OSDK::Gimbal::SpeedData speed_data;
+  //! OSDK takes 0.1 deg as unit
+  speed_data.gimbal_control_authority = 1;
+  speed_data.roll  = RAD2DEG(msg->vector.x)*10;
+  speed_data.pitch = RAD2DEG(msg->vector.y)*10;
+  speed_data.yaw   = RAD2DEG(msg->vector.z)*10;
+  ptr_wrapper_->getVehicle()->gimbal->setSpeed(&speed_data);
+}
+
+void
+VehicleNode::flightControlSetpointCallback(
+  const sensor_msgs::Joy::ConstPtr& pMsg)
+{ 
+  float xSP    = pMsg->axes[0];
+  float ySP    = pMsg->axes[1];
+  float zSP    = pMsg->axes[2];
+  float yawSP  = pMsg->axes[3];
+  uint8_t flag = (uint8_t)(pMsg->axes[4]);
+
+  ptr_wrapper_->flightControl(flag, xSP, ySP, zSP, yawSP);
+}
+
+void
+VehicleNode::flightControlPxPyPzYawCallback(
+  const sensor_msgs::Joy::ConstPtr& pMsg)
+{
+  uint8_t flag = (Control::VERTICAL_POSITION |
+                  Control::HORIZONTAL_POSITION |
+                  Control::YAW_ANGLE |
+                  Control::HORIZONTAL_GROUND |
+                  Control::STABLE_ENABLE);
+
+  float px    = pMsg->axes[0];
+  float py    = pMsg->axes[1];
+  float pz    = pMsg->axes[2];
+  float yaw   = pMsg->axes[3];
+
+  ptr_wrapper_->flightControl(flag, px, py, pz, yaw);
+}
+
+void
+VehicleNode::flightControlVxVyVzYawrateCallback(
+  const sensor_msgs::Joy::ConstPtr& pMsg)
+{
+  uint8_t flag = (Control::VERTICAL_VELOCITY |
+                  Control::HORIZONTAL_VELOCITY |
+                  Control::YAW_RATE |
+                  Control::HORIZONTAL_GROUND |
+                  Control::STABLE_ENABLE);
+  float vx        = pMsg->axes[0];
+  float vy        = pMsg->axes[1];
+  float vz        = pMsg->axes[2];
+  float yawRate   = pMsg->axes[3];
+
+  ptr_wrapper_->flightControl(flag, vx, vy, vz, yawRate);
+}
+
+void
+VehicleNode::flightControlRollPitchPzYawrateCallback(
+  const sensor_msgs::Joy::ConstPtr& pMsg)
+{
+  uint8_t flag = (Control::VERTICAL_POSITION |
+                  Control::HORIZONTAL_ANGLE |
+                  Control::YAW_RATE |
+                  Control::HORIZONTAL_BODY |
+                  Control::STABLE_ENABLE);
+
+  float roll      = pMsg->axes[0];
+  float pitch     = pMsg->axes[1];
+  float pz        = pMsg->axes[2];
+  float yawRate   = pMsg->axes[3];
+
+  ptr_wrapper_->flightControl(flag, roll, pitch, pz, yawRate);
 }

@@ -33,6 +33,7 @@
 #include <dji_setup_helpers.hpp>
 #include <dji_vehicle.hpp>
 #include <dji_osdk_ros/common_type.h>
+#include <tf/tf.h>
 #include <string>
 #include <cmath>
 #include <vector>
@@ -43,6 +44,8 @@
 
 const double C_EARTH = 6378137.0;
 const double DEG2RAD = 0.01745329252;
+const double RAD2DEG = 57.29577951308232;
+
 // Declaration
 namespace dji_osdk_ros
 {
@@ -102,6 +105,8 @@ namespace dji_osdk_ros
       bool monitoredTakeoff(ACK::ErrorCode& ack, int timeout);
       bool monitoredLanding(ACK::ErrorCode& ack, int timeout);
       bool moveByPositionOffset(ACK::ErrorCode& ack, int timeout, MoveOffset& p_offset);
+
+      void flightControl(uint8_t flag, float xSP, float ySP, float zSP, float yawSP);
 
       /*! Parts of mfio */
       uint8_t outputMFIO(uint8_t mode, uint8_t channel, uint32_t init_on_time_us, uint16_t freq, bool block, uint8_t gpio_value);
@@ -246,6 +251,8 @@ namespace dji_osdk_ros
       unsigned int baudrate_;
       std::string  sample_case_;
       const static unsigned int default_acm_baudrate = 230400;
+      const tf::Matrix3x3 R_FLU2FRD;
+      const tf::Matrix3x3 R_ENU2NED;
 };
 }
 
