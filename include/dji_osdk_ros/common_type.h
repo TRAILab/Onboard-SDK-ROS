@@ -30,6 +30,7 @@
 
 // Header include
 #include <dji_type.hpp>
+#include <dji_control.hpp>
 
 // Declaration
 namespace dji_osdk_ros
@@ -534,6 +535,32 @@ enum class PhotoBurstCount {
     RECV_DOWN_BACK    = 0,
     RECV_DOWN_FRONT   = 1,
     RECV_FRONT_DEPTH  = 15,
+  };
+  
+  /*!
+   * @brief This struct is used for flight control
+   */
+  enum FlightControlFlag
+  {
+    HORIZONTAL_ANGLE         = DJI::OSDK::Control::HORIZONTAL_ANGLE,
+    HORIZONTAL_VELOCITY      = DJI::OSDK::Control::HORIZONTAL_VELOCITY,
+    HORIZONTAL_POSITION      = DJI::OSDK::Control::HORIZONTAL_POSITION,
+    // Horizontal angular rate is supported only by A3/N3 based platform
+    // and is NOT supported by M100
+    HORIZONTAL_ANGULAR_RATE  = DJI::OSDK::Control::HORIZONTAL_ANGULAR_RATE,
+
+    VERTICAL_VELOCITY = DJI::OSDK::Control::VERTICAL_VELOCITY,
+    VERTICAL_POSITION = DJI::OSDK::Control::VERTICAL_POSITION,
+    VERTICAL_THRUST   = DJI::OSDK::Control::VERTICAL_THRUST,
+
+    YAW_ANGLE = DJI::OSDK::Control::YAW_ANGLE,
+    YAW_RATE  = DJI::OSDK::Control::YAW_RATE,
+
+    HORIZONTAL_GROUND = DJI::OSDK::Control::HORIZONTAL_GROUND,
+    HORIZONTAL_BODY   = DJI::OSDK::Control::HORIZONTAL_BODY,
+
+    STABLE_DISABLE = DJI::OSDK::Control::STABLE_DISABLE,
+    STABLE_ENABLE  = DJI::OSDK::Control::STABLE_ENABLE
   };
 
 }
