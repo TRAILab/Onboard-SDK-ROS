@@ -192,6 +192,7 @@ void VehicleNode::initService()
    *  flight control server
    *  @platforms M210V2, M300
    */
+  sdk_ctrlAuthority_server_  = nh_.advertiseService("dji_osdk_ros/sdk_control_authority", &VehicleNode::sdkCtrlAuthorityCallback, this);
   task_control_server_ = nh_.advertiseService("flight_task_control", &VehicleNode::taskCtrlCallback, this);
   set_home_altitude_server_ = nh_.advertiseService("set_go_home_altitude", &VehicleNode::setGoHomeAltitudeCallback,this);
   set_current_point_as_home_server_ = nh_.advertiseService("set_current_point_as_home", &VehicleNode::setHomeCallback,this);
@@ -996,6 +997,45 @@ bool VehicleNode::getDroneTypeCallback(dji_osdk_ros::GetDroneType::Request &requ
     return false;
   }
 
+}
+
+bool VehicleNode::sdkCtrlAuthorityCallback(
+  dji_osdk_ros::SDKControlAuthority::Request&  request,
+  dji_osdk_ros::SDKControlAuthority::Response& response)
+{
+
+  ROS_DEBUG("called sdkCtrlAuthorityCallback");
+
+  ACK::ErrorCode ack;
+  if (request.control_enable)
+  {
+    ack = ptr_wrapper_->getVehicle()->control->obtainCtrlAuthority(WAIT_TIMEOUT);
+    ROS_DEBUG("called vehicle->obtainCtrlAuthority");
+  }
+  else
+  {
+    ack = ptr_wrapper_->getVehicle()->control->releaseCtrlAuthority(WAIT_TIMEOUT);
+    ROS_DEBUG("called vehicle->releaseCtrlAuthority");
+  }
+
+  ROS_DEBUG("ack.info: set=%i id=%i", ack.info.cmd_set, ack.info.cmd_id);
+  ROS_DEBUG("ack.data: %i", ack.data);
+
+  response.cmd_set  = (int)ack.info.cmd_set;
+  response.cmd_id   = (int)ack.info.cmd_id;
+  response.ack_data = (unsigned int)ack.data;
+
+  if (ACK::getError(ack))
+  {
+    response.result = false;
+    ACK::getErrorCodeMessage(ack, __func__);
+  }
+  else
+  {
+    response.result = true;
+  }
+
+  return true;
 }
 
 bool VehicleNode::taskCtrlCallback(FlightTaskControl::Request&  request, FlightTaskControl::Response& response)

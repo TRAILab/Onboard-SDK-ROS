@@ -58,6 +58,7 @@
 #include <nmea_msgs/Sentence.h>
 
 /*! services */
+#include <dji_osdk_ros/SDKControlAuthority.h>
 #include <dji_osdk_ros/FlightTaskControl.h>
 #include <dji_osdk_ros/SetGoHomeAltitude.h>
 #include <dji_osdk_ros/SetNewHomePoint.h>
@@ -183,6 +184,7 @@ namespace dji_osdk_ros
       /*! for general */
       ros::ServiceServer get_drone_type_server_;
       /*! for flight control */
+      ros::ServiceServer sdk_ctrlAuthority_server_;
       ros::ServiceServer task_control_server_;
       ros::ServiceServer set_home_altitude_server_;
       ros::ServiceServer set_current_point_as_home_server_;
@@ -313,6 +315,8 @@ namespace dji_osdk_ros
       void flightControlVxVyVzYawrateCallback(const sensor_msgs::Joy::ConstPtr& pMsg);
       void flightControlRollPitchPzYawrateCallback(const sensor_msgs::Joy::ConstPtr& pMsg);
 
+      bool sdkCtrlAuthorityCallback(dji_osdk_ros::SDKControlAuthority::Request&  request,
+                                    dji_osdk_ros::SDKControlAuthority::Response& response);
       bool taskCtrlCallback(FlightTaskControl::Request& request, FlightTaskControl::Response& response);
       bool setGoHomeAltitudeCallback(SetGoHomeAltitude::Request& request, SetGoHomeAltitude::Response& response);
       bool setHomeCallback(SetNewHomePoint::Request& request, SetNewHomePoint::Response& response);
