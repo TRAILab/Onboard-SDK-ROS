@@ -225,7 +225,7 @@ add_service_files(
 ## DEPENDS: system dependencies of this project that dependent projects also need
 MESSAGE(STATUS "USB INCLUDE: ${LIBUSB_1_INCLUDE_DIR}")
 catkin_package(
-  INCLUDE_DIRS include
+  INCLUDE_DIRS include include/dji_osdk_ros_obsoleted
 #  LIBRARIES onboard-sdk-ros
   CATKIN_DEPENDS
     message_runtime
